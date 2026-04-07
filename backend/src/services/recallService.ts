@@ -7,7 +7,7 @@ import { getParticipantBySpeaker } from '../db/sessionRepo.js';
 import type { Utterance, NoteCategory } from '../../../shared/types.ts';
 import { v4 as uuid } from 'uuid';
 
-const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://us-west-2.recall.ai/api/v1';
+const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://us-east-1.recall.ai/api/v1';
 
 interface RecallBot {
   botId: string;
