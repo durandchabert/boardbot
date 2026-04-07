@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@boardbot/shared": ["../shared/types.ts"]
+    }
+  },
+  "include": ["src/**/*", "../shared/**/*"]
+}

@@ -1,0 +1,123 @@
+.note {
+  width: 180px;
+  min-height: 100px;
+  border: 2px solid;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+
+.note:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.suggested {
+  border-style: dashed;
+}
+
+.rejected {
+  opacity: 0.4;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.6rem;
+  color: #0f0f0f;
+  flex-shrink: 0;
+}
+
+.authorName {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.category {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-left: auto;
+}
+
+.badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.validated {
+  color: var(--success);
+}
+
+.rejected {
+  color: var(--danger);
+}
+
+.merged {
+  color: var(--accent);
+}
+
+.text {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  flex: 1;
+}
+
+.editArea {
+  flex: 1;
+}
+
+.editInput {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.actionBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+  border: 1px solid var(--border);
+}
+
+.actionBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.validate { color: var(--success); }
+.reject { color: var(--danger); }
+.edit { color: var(--text-secondary); }
