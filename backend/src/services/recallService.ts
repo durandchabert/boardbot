@@ -265,7 +265,7 @@ async function pollTranscript(sessionId: string, recordingId: string): Promise<v
 
 /**
  * Handle real-time webhook from Recall.ai
- * New API format: { event: "transcript.data", data: { transcript: { original_transcript_id, speaker_id, is_final, language, words: [{text, start_time, end_time}] } } }
+ * Actual format: { event: "transcript.data", data: { data: { words: [{text, start_timestamp, end_timestamp}], participant: {id, name}, language_code } } }
  */
 export async function handleWebhook(
   sessionId: string,
@@ -273,30 +273,48 @@ export async function handleWebhook(
 ): Promise<void> {
   const socketService = getSocketService();
 
-  console.log(`[Webhook] Processing event for session ${sessionId}`);
-
-  // New Recall API format
   const event = body.event as string | undefined;
-  const data = body.data as Record<string, unknown> | undefined;
+  const outerData = body.data as Record<string, unknown> | undefined;
 
-  if (event === 'transcript.data' && data?.transcript) {
-    const tx = data.transcript as {
-      speaker_id?: number;
-      is_final?: boolean;
-      words?: Array<{ text: string; start_time: number; end_time: number }>;
-    };
+  if (event !== 'transcript.data' || !outerData) return;
 
-    const text = tx.words?.map(w => w.text).join(' ')?.trim() ?? '';
-    const speakerLabel = `speaker_${tx.speaker_id ?? 0}`;
-    const isFinal = tx.is_final ?? false;
+  // Recall sends data in data.data (actual transcript) format
+  const innerData = outerData.data as {
+    words?: Array<{ text: string; start_timestamp?: unknown; end_timestamp?: unknown }>;
+    participant?: { id?: number; name?: string };
+    language_code?: string;
+  } | undefined;
 
-    // Emit live transcript
-    socketService?.emitTranscriptLive(sessionId, speakerLabel, text, isFinal);
+  // Also handle old format (data.transcript)
+  const txData = outerData.transcript as {
+    speaker_id?: number;
+    is_final?: boolean;
+    words?: Array<{ text: string }>;
+  } | undefined;
 
-    if (isFinal && text.length > 10) {
-      console.log(`[Webhook] Final transcript: "${text.slice(0, 80)}" from ${speakerLabel}`);
-      await processTranscriptSegment(sessionId, speakerLabel, text);
-    }
+  let text = '';
+  let speakerLabel = 'speaker_0';
+  let speakerName = '';
+
+  if (innerData?.words?.length) {
+    // New Recall format: data.data.words[].text
+    text = innerData.words.map(w => w.text).join(' ').trim();
+    speakerLabel = `speaker_${innerData.participant?.id ?? 0}`;
+    speakerName = innerData.participant?.name ?? '';
+  } else if (txData?.words?.length) {
+    // Old format: data.transcript.words[].text
+    text = txData.words.map(w => w.text).join(' ').trim();
+    speakerLabel = `speaker_${txData.speaker_id ?? 0}`;
+  }
+
+  if (!text) return;
+
+  // Emit live transcript
+  socketService?.emitTranscriptLive(sessionId, speakerLabel, text, true);
+
+  if (text.length > 10) {
+    console.log(`[Webhook] Transcript: "${text.slice(0, 80)}" from ${speakerName || speakerLabel}`);
+    await processTranscriptSegment(sessionId, speakerLabel, text);
   }
 }
 
@@ -306,6 +324,13 @@ async function processTranscriptSegment(
   transcript: string
 ): Promise<void> {
   const socketService = getSocketService();
+
+  // Verify session exists
+  const { getSession } = await import('../db/sessionRepo.js');
+  if (!getSession(sessionId)) {
+    console.log(`[Webhook] Session ${sessionId} not found in DB, skipping`);
+    return;
+  }
 
   const utterance: Utterance = {
     utterance_id: uuid(),
