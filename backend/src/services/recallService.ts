@@ -61,12 +61,6 @@ export async function startRecallBot(
       body: JSON.stringify({
         meeting_url: meetingUrl,
         bot_name: botName,
-        ...(process.env.PUBLIC_URL ? {
-          real_time_transcription: {
-            destination_url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
-            partial_transcripts: true,
-          },
-        } : {}),
       }),
     });
 
