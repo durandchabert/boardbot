@@ -7,7 +7,7 @@ import { getParticipantBySpeaker } from '../db/sessionRepo.js';
 import type { Utterance, NoteCategory } from '../../../shared/types.ts';
 import { v4 as uuid } from 'uuid';
 
-const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://eu-central-1.recall.ai/api/v1';
+const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://us-west-2.recall.ai/api/v1';
 
 interface RecallBot {
   botId: string;
@@ -61,6 +61,16 @@ export async function startRecallBot(
       body: JSON.stringify({
         meeting_url: meetingUrl,
         bot_name: botName,
+        transcription_options: {
+          provider: 'deepgram',
+          language: 'fr',
+        },
+        ...(process.env.PUBLIC_URL ? {
+          real_time_transcription: {
+            destination_url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
+            partial_transcripts: false,
+          },
+        } : {}),
       }),
     });
 
