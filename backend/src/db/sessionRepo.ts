@@ -86,3 +86,20 @@ export function getParticipantBySpeaker(
       .get(sessionId, speakerLabel) as Participant | undefined) ?? null
   );
 }
+
+export function getParticipantByName(
+  sessionId: string,
+  name: string
+): Participant | null {
+  const db = getDb();
+  // Fuzzy match: check if the participant display_name is contained in the provided name or vice versa
+  const participants = db
+    .prepare('SELECT * FROM participants WHERE session_id = ?')
+    .all(sessionId) as Participant[];
+
+  const nameLower = name.toLowerCase();
+  return participants.find(p =>
+    nameLower.includes(p.display_name.toLowerCase()) ||
+    p.display_name.toLowerCase().includes(nameLower)
+  ) ?? null;
+}

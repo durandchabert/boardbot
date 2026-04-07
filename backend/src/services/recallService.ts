@@ -314,19 +314,20 @@ export async function handleWebhook(
 
   if (text.length > 10) {
     console.log(`[Webhook] Transcript: "${text.slice(0, 80)}" from ${speakerName || speakerLabel}`);
-    await processTranscriptSegment(sessionId, speakerLabel, text);
+    await processTranscriptSegment(sessionId, speakerLabel, text, speakerName);
   }
 }
 
 async function processTranscriptSegment(
   sessionId: string,
   speakerLabel: string,
-  transcript: string
+  transcript: string,
+  speakerName: string = ''
 ): Promise<void> {
   const socketService = getSocketService();
 
   // Verify session exists
-  const { getSession } = await import('../db/sessionRepo.js');
+  const { getSession, getParticipantByName } = await import('../db/sessionRepo.js');
   if (!getSession(sessionId)) {
     console.log(`[Webhook] Session ${sessionId} not found in DB, skipping`);
     return;
@@ -385,7 +386,11 @@ async function processTranscriptSegment(
   const generated = await generateNoteText(transcript);
   if (!generated) return;
 
-  const participant = getParticipantBySpeaker(sessionId, speakerLabel);
+  // Try to find participant by name first (Recall sends real names), fallback to speaker label
+  let participant = speakerName ? getParticipantByName(sessionId, speakerName) : null;
+  if (!participant) {
+    participant = getParticipantBySpeaker(sessionId, speakerLabel);
+  }
 
   const note = createNote({
     session_id: sessionId,
