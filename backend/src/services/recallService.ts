@@ -61,16 +61,22 @@ export async function startRecallBot(
       body: JSON.stringify({
         meeting_url: meetingUrl,
         bot_name: botName,
-        transcription_options: {
-          provider: 'deepgram',
-          language: 'fr',
-        },
-        ...(process.env.PUBLIC_URL ? {
-          real_time_transcription: {
-            destination_url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
-            partial_transcripts: false,
+        recording_config: {
+          transcript: {
+            provider: {
+              deepgram_streaming: { language: 'fr' },
+            },
           },
-        } : {}),
+          ...(process.env.PUBLIC_URL ? {
+            realtime_endpoints: [
+              {
+                type: 'webhook' as const,
+                url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
+                events: ['transcript.data'],
+              },
+            ],
+          } : {}),
+        },
       }),
     });
 
@@ -259,29 +265,37 @@ async function pollTranscript(sessionId: string, recordingId: string): Promise<v
 
 /**
  * Handle real-time webhook from Recall.ai
+ * New API format: { event: "transcript.data", data: { transcript: { original_transcript_id, speaker_id, is_final, language, words: [{text, start_time, end_time}] } } }
  */
 export async function handleWebhook(
   sessionId: string,
-  data: {
-    transcript?: { speaker: string; text: string; is_final: boolean };
-    event?: string;
-  }
+  body: Record<string, unknown>
 ): Promise<void> {
   const socketService = getSocketService();
 
-  if (data.event) {
-    socketService?.emitBotLog(sessionId, `Recall event: ${data.event}`);
-    return;
-  }
+  console.log(`[Webhook] Processing event for session ${sessionId}`);
 
-  if (data.transcript) {
-    const { speaker, text, is_final } = data.transcript;
+  // New Recall API format
+  const event = body.event as string | undefined;
+  const data = body.data as Record<string, unknown> | undefined;
+
+  if (event === 'transcript.data' && data?.transcript) {
+    const tx = data.transcript as {
+      speaker_id?: number;
+      is_final?: boolean;
+      words?: Array<{ text: string; start_time: number; end_time: number }>;
+    };
+
+    const text = tx.words?.map(w => w.text).join(' ')?.trim() ?? '';
+    const speakerLabel = `speaker_${tx.speaker_id ?? 0}`;
+    const isFinal = tx.is_final ?? false;
 
     // Emit live transcript
-    socketService?.emitTranscriptLive(sessionId, speaker, text, is_final);
+    socketService?.emitTranscriptLive(sessionId, speakerLabel, text, isFinal);
 
-    if (is_final && text.trim().length > 10) {
-      await processTranscriptSegment(sessionId, speaker, text);
+    if (isFinal && text.length > 10) {
+      console.log(`[Webhook] Final transcript: "${text.slice(0, 80)}" from ${speakerLabel}`);
+      await processTranscriptSegment(sessionId, speakerLabel, text);
     }
   }
 }
