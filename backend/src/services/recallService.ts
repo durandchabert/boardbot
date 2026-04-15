@@ -343,6 +343,14 @@ async function processTranscriptSegment(
     confidence: 0.95,
   };
 
+  // Persist utterance for transcript export
+  const { createUtterance } = await import('../db/utteranceRepo.js');
+  try {
+    createUtterance(utterance);
+  } catch (err) {
+    console.error('[Utterance] Save error:', err);
+  }
+
   const detection = detectIdea(utterance, sessionId);
   if (!detection.shouldCreate) return;
 

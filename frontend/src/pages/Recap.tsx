@@ -1,9 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSession } from '../hooks/useSession.js';
 import type { StickyNote, NoteCategory } from '@boardbot/shared';
 import { CATEGORY_LABELS } from '@boardbot/shared';
 import styles from './Recap.module.css';
+
+interface UtteranceWithSpeaker {
+  utterance_id: string;
+  session_id: string;
+  speaker_label: string;
+  transcript: string;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+  display_name: string;
+  color: string;
+  avatar_initials: string;
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
 
 export default function Recap() {
   const { id } = useParams<{ id: string }>();
@@ -11,12 +30,23 @@ export default function Recap() {
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [utterances, setUtterances] = useState<UtteranceWithSpeaker[]>([]);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     fetch(`/api/sessions/${id}/notes`)
       .then((res) => res.json())
       .then(setNotes)
+      .catch(console.error);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/sessions/${id}/transcript`)
+      .then((res) => res.json())
+      .then((data) => setUtterances(data.utterances ?? []))
       .catch(console.error);
   }, [id]);
 
@@ -55,6 +85,42 @@ export default function Recap() {
       setSummary('Erreur lors de la génération du résumé.');
     } finally {
       setLoadingSummary(false);
+    }
+  };
+
+  const handleDownloadDocx = () => {
+    const a = document.createElement('a');
+    a.href = `/api/sessions/${id}/transcript/docx`;
+    a.download = '';
+    a.click();
+  };
+
+  const handleCopyTranscript = async () => {
+    const lines: string[] = [];
+    if (session) {
+      lines.push(session.title);
+      lines.push('='.repeat(session.title.length));
+      lines.push('');
+    }
+    for (const u of utterances) {
+      lines.push(`[${formatTime(u.start_time)}] ${u.display_name}`);
+      lines.push(u.transcript);
+      lines.push('');
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      // fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = lines.join('\n');
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
     }
   };
 
@@ -124,6 +190,66 @@ export default function Recap() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* ── Transcript Export Section ── */}
+      <div className={styles.transcriptSection}>
+        <div className={styles.transcriptHeader}>
+          <div>
+            <h2 className={styles.transcriptTitle}>Transcript</h2>
+            <p className={styles.transcriptMeta}>
+              {utterances.length > 0
+                ? `${utterances.length} segment${utterances.length !== 1 ? 's' : ''} • ${[...new Set(utterances.map((u) => u.display_name))].join(', ')}`
+                : 'Aucune transcription disponible'}
+            </p>
+          </div>
+          <div className={styles.transcriptActions}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleCopyTranscript}
+              disabled={utterances.length === 0}
+            >
+              {copySuccess ? '✓ Copié !' : 'Copier'}
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleDownloadDocx}
+              disabled={utterances.length === 0}
+            >
+              Télécharger .docx
+            </button>
+            <button
+              className={`btn btn-secondary btn-sm ${styles.toggleBtn}`}
+              onClick={() => setShowTranscript((v) => !v)}
+            >
+              {showTranscript ? 'Masquer' : 'Afficher'}
+            </button>
+          </div>
+        </div>
+
+        {showTranscript && (
+          <div className={styles.transcriptBody}>
+            {utterances.length === 0 ? (
+              <p className={styles.empty}>Aucune transcription enregistrée pour cette session.</p>
+            ) : (
+              utterances.map((u) => (
+                <div key={u.utterance_id} className={styles.utterance}>
+                  <div className={styles.utteranceMeta}>
+                    <span
+                      className={styles.speakerAvatar}
+                      style={{ background: u.color }}
+                    >
+                      {u.avatar_initials}
+                    </span>
+                    <span className={styles.speakerName}>{u.display_name}</span>
+                    <span className={styles.utteranceTime}>{formatTime(u.start_time)}</span>
+                  </div>
+                  <p className={styles.utteranceText}>{u.transcript}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

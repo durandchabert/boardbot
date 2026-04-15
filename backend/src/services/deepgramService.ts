@@ -121,6 +121,14 @@ export class DeepgramService {
         confidence: alt.confidence ?? 0,
       };
 
+      // Persist utterance for transcript export
+      try {
+        const { createUtterance } = await import('../db/utteranceRepo.js');
+        createUtterance(utterance);
+      } catch (err) {
+        console.error('[Utterance] Save error:', err);
+      }
+
       // Accumulate transcript for periodic review
       const prevBuf = transcriptBuffers.get(sessionId) ?? '';
       transcriptBuffers.set(sessionId, prevBuf + `\n${speakerLabel}: ${transcript}`);

@@ -19,6 +19,7 @@ import summaryRoutes from './routes/summary.js';
 import botRoutes from './routes/bot.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
+import transcriptRoutes from './routes/transcript.js';
 import { getDb } from './db/schema.js';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
@@ -50,6 +51,7 @@ app.use('/api/sessions', summaryRoutes);
 app.use('/api/sessions', botRoutes);
 app.use('/api/recall/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/sessions', transcriptRoutes);
 
 // Serve frontend static files in production
 const frontendDist = path.resolve(__dirname, '..', '..', 'frontend', 'dist');
