@@ -34,8 +34,17 @@ export default function Board() {
     rejectNote,
     editNote,
     botLogs,
+    liveParticipants,
     sendBotMessage,
   } = useSocket(id);
+
+  // Fusion : participants initiaux (depuis la DB) + nouveaux arrivants détectés en live
+  const allParticipants = [
+    ...(session?.participants ?? []),
+    ...liveParticipants.filter(
+      (lp) => !(session?.participants ?? []).some((p) => p.participant_id === lp.participant_id)
+    ),
+  ];
   const { isActive, isRecording, isCapturingTab, error: audioError, startRecording, startTabCapture, stopRecording } = useAudioCapture(id);
 
   if (loading) return <div className={styles.loading}>Chargement du board...</div>;
@@ -72,7 +81,7 @@ export default function Board() {
           </button>
         </div>
 
-        <ParticipantList participants={session.participants} />
+        <ParticipantList participants={allParticipants} />
 
         <div className={styles.actions}>
           {/* Meeting Bot (Recall.ai) */}
@@ -169,7 +178,7 @@ export default function Board() {
         <div className={styles.boardContainer}>
           <BoardCanvas
             notes={notes}
-            participants={session.participants}
+            participants={allParticipants}
             onValidate={validateNote}
             onReject={rejectNote}
             onEdit={editNote}
@@ -179,7 +188,7 @@ export default function Board() {
         {/* Transcript bar */}
         <TranscriptBar
           transcript={liveTranscript}
-          participants={session.participants}
+          participants={allParticipants}
         />
       </main>
 

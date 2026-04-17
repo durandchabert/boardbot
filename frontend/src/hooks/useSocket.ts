@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { StickyNote } from '@boardbot/shared';
+import type { StickyNote, Participant } from '@boardbot/shared';
 import type { LogEntry } from '../components/BotLogPanel.js';
 
 interface TranscriptMessage {
@@ -16,6 +16,7 @@ export function useSocket(sessionId: string | undefined) {
   const [connected, setConnected] = useState(false);
   const [noteCount, setNoteCount] = useState(0);
   const [botLogs, setBotLogs] = useState<LogEntry[]>([]);
+  const [liveParticipants, setLiveParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -50,6 +51,15 @@ export function useSocket(sessionId: string | undefined) {
 
     socket.on('transcript:live', (data: TranscriptMessage) => {
       setLiveTranscript(data);
+    });
+
+    // Participant auto-détecté par le bot Recall.ai
+    socket.on('participant:added', ({ participant }: { participant: Participant }) => {
+      setLiveParticipants((prev) =>
+        prev.some((p) => p.participant_id === participant.participant_id)
+          ? prev
+          : [...prev, participant]
+      );
     });
 
     // Bot log events
@@ -100,6 +110,7 @@ export function useSocket(sessionId: string | undefined) {
     connected,
     noteCount,
     botLogs,
+    liveParticipants,
     validateNote,
     rejectNote,
     editNote,

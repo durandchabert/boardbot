@@ -51,6 +51,7 @@ export interface ServerToClientEvents {
   'note:deleted': (data: { note_id: string }) => void;
   'transcript:live': (data: { speaker_label: string; text: string; is_final: boolean }) => void;
   'session:ended': () => void;
+  'participant:added': (data: { participant: Participant }) => void;
 }
 
 export interface ClientToServerEvents {

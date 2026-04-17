@@ -265,7 +265,7 @@ async function pollTranscript(sessionId: string, recordingId: string): Promise<v
 
 /**
  * Handle real-time webhook from Recall.ai
- * Actual format: { event: "transcript.data", data: { data: { words: [{text, start_timestamp, end_timestamp}], participant: {id, name}, language_code } } }
+ * Handles: transcript.data, participant.joined
  */
 export async function handleWebhook(
   sessionId: string,
@@ -275,6 +275,23 @@ export async function handleWebhook(
 
   const event = body.event as string | undefined;
   const outerData = body.data as Record<string, unknown> | undefined;
+
+  // ── Participant joined ──────────────────────────────────────────────────────
+  if (event === 'participant.joined' && outerData) {
+    const p = outerData as { id?: number; name?: string };
+    const name = p.name?.trim();
+    if (name && name.toLowerCase() !== 'boardbot' && name.toLowerCase() !== 'board bot') {
+      const { getSession, getParticipantByName, addParticipant } = await import('../db/sessionRepo.js');
+      if (getSession(sessionId) && !getParticipantByName(sessionId, name)) {
+        const speakerLabel = `speaker_${p.id ?? 0}`;
+        const participant = addParticipant(sessionId, name, speakerLabel);
+        socketService?.emitParticipantAdded(sessionId, participant);
+        socketService?.emitBotLog(sessionId, `👤 ${name} a rejoint le call`);
+        console.log(`[Recall] Participant auto-créé : ${name} (${speakerLabel})`);
+      }
+    }
+    return;
+  }
 
   if (event !== 'transcript.data' || !outerData) return;
 
@@ -398,6 +415,16 @@ async function processTranscriptSegment(
   let participant = speakerName ? getParticipantByName(sessionId, speakerName) : null;
   if (!participant) {
     participant = getParticipantBySpeaker(sessionId, speakerLabel);
+  }
+
+  // Auto-create participant on first speech if still not found
+  if (!participant && speakerName && speakerName.toLowerCase() !== 'boardbot') {
+    const { addParticipant } = await import('../db/sessionRepo.js');
+    const socketService = getSocketService();
+    participant = addParticipant(sessionId, speakerName, speakerLabel);
+    socketService?.emitParticipantAdded(sessionId, participant);
+    socketService?.emitBotLog(sessionId, `👤 ${speakerName} détecté`);
+    console.log(`[Recall] Participant auto-créé à la prise de parole : ${speakerName}`);
   }
 
   const note = createNote({
