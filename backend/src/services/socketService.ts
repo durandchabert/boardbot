@@ -26,6 +26,7 @@ export class SocketService {
       console.log(`[Socket] Client connected: ${socket.id}`);
 
       let audioSessionId: string | null = null;
+      let audioSessionLang: string = 'fr';
 
       socket.on('session:join', (data: { session_id: string }) => {
         socket.join(data.session_id);
@@ -33,12 +34,22 @@ export class SocketService {
       });
 
       // Audio streaming events
-      socket.on('audio:start', (data: { session_id: string }) => {
+      socket.on('audio:start', async (data: { session_id: string }) => {
         audioSessionId = data.session_id;
         console.log(`[Audio] ${socket.id} started audio for session ${audioSessionId}`);
+
+        // Look up session language so Deepgram streams in the right language
+        try {
+          const { getSession } = await import('../db/sessionRepo.js');
+          const sess = getSession(audioSessionId);
+          if (sess?.language) audioSessionLang = sess.language;
+        } catch {
+          // fallback to 'fr'
+        }
+
         const dg = getDeepgramService();
         if (dg) {
-          dg.startSession(audioSessionId);
+          dg.startSession(audioSessionId, audioSessionLang);
         }
       });
 
@@ -46,7 +57,7 @@ export class SocketService {
         if (!audioSessionId) return;
         const dg = getDeepgramService();
         if (dg) {
-          dg.sendAudioBuffer(audioSessionId, data);
+          dg.sendAudioBuffer(audioSessionId, data, audioSessionLang);
         }
       });
 

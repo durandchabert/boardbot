@@ -292,10 +292,10 @@ export class DeepgramService {
     }
   }
 
-  sendAudio(sessionId: string, audioBuffer: Buffer): void {
+  sendAudio(sessionId: string, audioBuffer: Buffer, language: string = 'fr'): void {
     let connection = this.connections.get(sessionId);
     if (!connection) {
-      this.startSession(sessionId);
+      this.startSession(sessionId, language);
       connection = this.connections.get(sessionId);
     }
     if (connection) {
@@ -303,11 +303,11 @@ export class DeepgramService {
     }
   }
 
-  sendAudioBuffer(sessionId: string, data: ArrayBuffer): void {
+  sendAudioBuffer(sessionId: string, data: ArrayBuffer, language: string = 'fr'): void {
     let connection = this.connections.get(sessionId);
     if (!connection) {
       console.log(`[Deepgram] Reconnecting for session ${sessionId}`);
-      this.startSession(sessionId);
+      this.startSession(sessionId, language);
       connection = this.connections.get(sessionId);
     }
     if (connection) {

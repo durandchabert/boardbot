@@ -27,7 +27,7 @@ router.post('/:id/audio', upload.single('audio'), (req, res) => {
 
   const deepgramService = getDeepgramService();
   if (deepgramService) {
-    deepgramService.sendAudio(sessionId, file.buffer);
+    deepgramService.sendAudio(sessionId, file.buffer, session.language ?? 'fr');
   }
 
   res.json({ ok: true, bytes: file.buffer.length });
