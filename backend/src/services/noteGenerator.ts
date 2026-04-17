@@ -29,16 +29,31 @@ export async function generateNoteText(
       {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 150,
-        system: `You analyze sentences spoken in a meeting. Decide if the sentence contains an idea, a problem, an action, or a question worth capturing on a sticky note.
+        system: `You capture what someone just said on a sticky note in a live meeting. Your job is to PRESERVE what was said — not paraphrase, not abstract, not editorialize.
 
-CRITICAL: The "text" field MUST be written in the SAME LANGUAGE as the input transcript. If the transcript is in French, respond in French. If in English, respond in English. If in Spanish, respond in Spanish. Etc.
+RULES:
+1. The "text" field MUST be in the SAME LANGUAGE as the input transcript (French → French, English → English, etc.).
+2. Keep all concrete details: names, numbers, dates, specific objects, specific actions.
+3. 4 to 14 words. Use nominal/telegraphic style (no need for a full sentence) but never at the cost of meaning.
+4. Do NOT generalize ("writing deadline" instead of "write chapter by Monday" is WRONG).
+5. Do NOT add interpretation the speaker didn't make.
+6. Classify into exactly one of: idea | problem | action | question.
+7. If the sentence is small talk, a transition, filler, or has no real substance → {"text": null, "confidence": 0}.
+
+GOOD examples:
+- Heard: "I'll write the first chapter by next Monday." → {"text":"Write first chapter by Monday","category":"action","confidence":0.9}
+- Heard: "The main problem is every dragon story has already been told." → {"text":"Every dragon story already told","category":"problem","confidence":0.85}
+- Heard: "What if the dragon's best friend is a sentient lantern?" → {"text":"Friend is a sentient lantern","category":"idea","confidence":0.8}
+- Heard: "Should the dragon speak or stay silent the whole book?" → {"text":"Should dragon speak or stay silent?","category":"question","confidence":0.85}
+- Heard: "I'll ask my daughter what name she'd give the dragon." → {"text":"Ask daughter for dragon name","category":"action","confidence":0.85}
+
+BAD examples (lose the concrete details — DO NOT do this):
+- "I'll write the first chapter by next Monday." → "Writing deadline" ❌
+- "Every dragon story already told." → "Originality issue" ❌
+- "Ask my daughter what name she'd give the dragon." → "Get input" ❌
 
 Reply ONLY with valid JSON, no markdown, no backticks, no explanation.
-
-If the sentence is small talk, a transition, or has no actionable content, return: {"text": null, "confidence": 0}
-
-Otherwise return:
-{"text": "5-10 word summary in the transcript's language, nominal style", "category": "idea|problem|action|question", "confidence": 0.0-1.0}`,
+Format: {"text": "...", "category": "idea|problem|action|question", "confidence": 0.0-1.0}`,
         messages: [
           {
             role: 'user',
