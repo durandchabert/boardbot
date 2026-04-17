@@ -38,6 +38,26 @@ function getNextPosition(category: NoteCategory): { x: number; y: number } {
 const transcriptBuffers = new Map<string, string>();
 const reviewIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
+// Cheap local gate: only run the (expensive) instruction-detection Claude call
+// when the utterance looks like a correction / delete / recategorize.
+// Keeps regular brainstorm phrases on a single Claude call (generateNoteText).
+const INSTRUCTION_HINTS = [
+  // English
+  'actually', 'wait', 'no wait', 'correction', 'correct that', 'i meant',
+  'let me rephrase', 'rephrase', 'scratch that', 'forget that', 'forget it',
+  'delete', 'remove', 'erase', 'drop that',
+  'move it', 'move that', 'put it in', 'put that in', 'recategorize', 're-categorize',
+  "it's not", "that's not", 'not a', 'rather a',
+  // French
+  'en fait', 'en vrai', 'pardon', 'je rectifie', 'je me corrige', 'je voulais dire',
+  'je reformule', 'oublie', 'oublie ça', 'supprime', 'enlève', 'efface',
+  'déplace', 'mets-le dans', 'mets ça dans', "c'est plutôt", "c'est pas",
+];
+function looksLikeInstruction(transcript: string): boolean {
+  const t = transcript.toLowerCase();
+  return INSTRUCTION_HINTS.some((kw) => t.includes(kw));
+}
+
 export class DeepgramService {
   private connections: Map<string, ReturnType<ReturnType<typeof createClient>['listen']['live']>> = new Map();
   private deepgramClient: ReturnType<typeof createClient> | null = null;
@@ -74,7 +94,7 @@ export class DeepgramService {
     const connection = this.deepgramClient.listen.live(options);
 
     connection.on(LiveTranscriptionEvents.Open, () => {
-      console.log(`[Deepgram] Connection opened for session ${sessionId}`);
+      console.log(`[Deepgram] Connection opened for session ${sessionId} (language=${language})`);
     });
 
     connection.on(LiveTranscriptionEvents.Metadata, (data) => {
@@ -139,8 +159,9 @@ export class DeepgramService {
       if (!detection.shouldCreate) return;
 
       // Step 1: Check if this is an instruction (correction, recategorize, delete)
+      // Gate on cheap keyword match so normal brainstorming phrases don't pay the extra Claude call.
       const recentNotes = getNotesBySession(sessionId).slice(-8);
-      if (recentNotes.length > 0) {
+      if (recentNotes.length > 0 && looksLikeInstruction(transcript)) {
         const instruction = await detectInstruction(transcript, recentNotes);
         if (instruction.type !== 'none' && instruction.noteId) {
           if (instruction.type === 'correction' && instruction.correctedText) {
