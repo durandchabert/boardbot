@@ -1,18 +1,18 @@
 import { v4 as uuid } from 'uuid';
 import { getDb } from './schema.js';
-import type { MeetingSession, Participant } from '../../../shared/types.ts';
+import type { MeetingSession, Participant, SessionLanguage } from '../../../shared/types.ts';
 import { PARTICIPANT_COLORS } from '../../../shared/types.ts';
 
-export function createSession(title: string): MeetingSession {
+export function createSession(title: string, language: SessionLanguage = 'fr'): MeetingSession {
   const db = getDb();
   const session_id = uuid();
   const created_at = new Date().toISOString();
 
   db.prepare(
-    'INSERT INTO sessions (session_id, title, created_at, status) VALUES (?, ?, ?, ?)'
-  ).run(session_id, title, created_at, 'active');
+    'INSERT INTO sessions (session_id, title, created_at, status, language) VALUES (?, ?, ?, ?, ?)'
+  ).run(session_id, title, created_at, 'active', language);
 
-  return { session_id, title, created_at, status: 'active', participants: [] };
+  return { session_id, title, created_at, status: 'active', language, participants: [] };
 }
 
 export function getSession(sessionId: string): MeetingSession | null {
@@ -22,6 +22,7 @@ export function getSession(sessionId: string): MeetingSession | null {
     title: string;
     created_at: string;
     status: 'active' | 'ended';
+    language?: SessionLanguage;
   } | undefined;
 
   if (!row) return null;
@@ -30,7 +31,7 @@ export function getSession(sessionId: string): MeetingSession | null {
     .prepare('SELECT * FROM participants WHERE session_id = ?')
     .all(sessionId) as Participant[];
 
-  return { ...row, participants };
+  return { ...row, language: row.language ?? 'fr', participants };
 }
 
 export function endSession(sessionId: string): void {

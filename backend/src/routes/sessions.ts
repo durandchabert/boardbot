@@ -5,12 +5,14 @@ const router = Router();
 
 // POST /api/sessions — créer une session
 router.post('/', (req, res) => {
-  const { title } = req.body;
+  const { title, language } = req.body;
   if (!title || typeof title !== 'string') {
     res.status(400).json({ error: 'title is required' });
     return;
   }
-  const session = createSession(title.trim());
+  const allowedLanguages = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl'];
+  const lang = typeof language === 'string' && allowedLanguages.includes(language) ? language : 'fr';
+  const session = createSession(title.trim(), lang as 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'nl');
   res.status(201).json(session);
 });
 

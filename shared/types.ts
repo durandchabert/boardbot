@@ -1,9 +1,23 @@
+// ── Langues supportées pour la transcription ──
+export type SessionLanguage = 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'nl';
+
+export const LANGUAGE_LABELS: Record<SessionLanguage, string> = {
+  fr: 'Français',
+  en: 'English',
+  es: 'Español',
+  de: 'Deutsch',
+  it: 'Italiano',
+  pt: 'Português',
+  nl: 'Nederlands',
+};
+
 // ── Session de réunion ──
 export interface MeetingSession {
   session_id: string;
   title: string;
   created_at: string;
   status: 'active' | 'ended';
+  language: SessionLanguage;
   participants: Participant[];
 }
 
@@ -64,6 +78,7 @@ export interface ClientToServerEvents {
 // ── API Request/Response types ──
 export interface CreateSessionRequest {
   title: string;
+  language?: SessionLanguage;
 }
 
 export interface AddParticipantRequest {

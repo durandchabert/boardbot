@@ -29,14 +29,16 @@ export async function generateNoteText(
       {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 150,
-        system: `Tu analyses des phrases prononcées en réunion. Tu décides si la phrase contient une idée, un problème, une action ou une question qui mérite d'être capturée sur un post-it.
+        system: `You analyze sentences spoken in a meeting. Decide if the sentence contains an idea, a problem, an action, or a question worth capturing on a sticky note.
 
-Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans backticks, sans explication.
+CRITICAL: The "text" field MUST be written in the SAME LANGUAGE as the input transcript. If the transcript is in French, respond in French. If in English, respond in English. If in Spanish, respond in Spanish. Etc.
 
-Si la phrase est du bavardage, une transition, ou n'a pas de contenu actionnable, retourne : {"text": null, "confidence": 0}
+Reply ONLY with valid JSON, no markdown, no backticks, no explanation.
 
-Sinon retourne :
-{"text": "résumé en 5-10 mots, style nominal", "category": "idea|problem|action|question", "confidence": 0.0-1.0}`,
+If the sentence is small talk, a transition, or has no actionable content, return: {"text": null, "confidence": 0}
+
+Otherwise return:
+{"text": "5-10 word summary in the transcript's language, nominal style", "category": "idea|problem|action|question", "confidence": 0.0-1.0}`,
         messages: [
           {
             role: 'user',
@@ -103,29 +105,31 @@ export async function detectInstruction(
       {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 200,
-        system: `Tu analyses si une phrase prononcée en réunion est une INSTRUCTION destinée au bot concernant les post-it récents.
+        system: `You analyze whether a sentence spoken in a meeting is an INSTRUCTION to the bot regarding recent sticky notes. The meeting can be in ANY language — detect instructions regardless of the language used.
 
-Types d'instructions possibles :
-- CORRECTION du texte : "en fait non c'est pas 5 mais 25", "je rectifie...", "pardon je voulais dire..."
-- RECATÉGORISATION : "non mets-le dans idée", "c'est plutôt un problème", "ça c'est une action pas une idée"
-- SUPPRESSION : "enlève le dernier", "supprime ça", "non oublie ce post-it"
-- PAS UNE INSTRUCTION : la phrase est du contenu normal de réunion
+Possible instruction types:
+- TEXT CORRECTION: "actually it's not 5 but 25", "let me correct that", "I meant to say..." (and equivalents in any language)
+- RECATEGORIZATION: "no put it under idea", "that's more of a problem", "that's an action not an idea" (and equivalents in any language)
+- DELETION: "remove the last one", "delete that", "forget that sticky note" (and equivalents in any language)
+- NOT AN INSTRUCTION: the sentence is normal meeting content
 
-Post-it récents :
+Recent sticky notes:
 ${notesContext}
 
-Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans backticks.
+CRITICAL: The "corrected_text" field MUST be written in the SAME LANGUAGE as the input transcript.
 
-Si c'est une correction de texte :
-{"type": "correction", "note_id": "...", "corrected_text": "nouveau texte 5-10 mots", "log": "explication courte"}
+Reply ONLY with valid JSON, no markdown, no backticks.
 
-Si c'est un changement de catégorie :
-{"type": "recategorize", "note_id": "...", "new_category": "idea|problem|action|question", "log": "explication courte"}
+If it's a text correction:
+{"type": "correction", "note_id": "...", "corrected_text": "new 5-10 word text in transcript's language", "log": "short explanation"}
 
-Si c'est une suppression :
-{"type": "delete", "note_id": "...", "log": "explication courte"}
+If it's a category change:
+{"type": "recategorize", "note_id": "...", "new_category": "idea|problem|action|question", "log": "short explanation"}
 
-Si ce n'est PAS une instruction :
+If it's a deletion:
+{"type": "delete", "note_id": "...", "log": "short explanation"}
+
+If it is NOT an instruction:
 {"type": "none"}`,
         messages: [
           {
@@ -193,19 +197,21 @@ export async function reviewNotes(
       {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 500,
-        system: `Tu fais une revue des post-it d'une réunion en cours. Avec le contexte du transcript récent, tu vérifies si les post-it sont bien catégorisés et bien formulés.
+        system: `You review the sticky notes of an ongoing meeting. Using the context of the recent transcript, you verify that the sticky notes are correctly categorized and well worded.
 
-Réponds UNIQUEMENT avec un JSON valide, sans markdown, sans backticks.
+CRITICAL: When rewriting "text", MUST use the SAME LANGUAGE as the input transcript.
 
-Retourne un tableau de modifications à appliquer. Ne modifie QUE les notes qui ont vraiment besoin d'être corrigées. Si tout est bon, retourne un tableau vide [].
+Reply ONLY with valid JSON, no markdown, no backticks.
 
-Format : [{"note_id": "...", "text": "nouveau texte si changé", "category": "nouvelle catégorie si changée", "action": "update"}]
+Return an array of modifications to apply. ONLY modify notes that really need correction. If everything is fine, return an empty array [].
 
-Règles :
-- Ne change une catégorie QUE si elle est clairement incorrecte
-- Améliore le texte seulement s'il est imprécis ou incomplet
-- Ne touche PAS aux notes validées (status: validated)
-- Maximum 3 modifications par revue`,
+Format: [{"note_id": "...", "text": "new text if changed, in transcript's language", "category": "new category if changed", "action": "update"}]
+
+Rules:
+- Only change a category if it is clearly incorrect
+- Only improve the text if it is imprecise or incomplete
+- Do NOT touch validated notes (status: validated)
+- Maximum 3 modifications per review`,
         messages: [
           {
             role: 'user',

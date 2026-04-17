@@ -19,7 +19,7 @@ router.post('/:id/bot/start', async (req, res) => {
 
   try {
     const { startRecallBot } = await import('../services/recallService.js');
-    const result = await startRecallBot(req.params.id, meeting_url, bot_name ?? 'BoardBot');
+    const result = await startRecallBot(req.params.id, meeting_url, bot_name ?? 'BoardBot', session.language);
     if (result.ok) {
       res.json({ ok: true, botId: result.botId });
     } else {

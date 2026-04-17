@@ -23,7 +23,8 @@ function initSchema(db: Database.Database): void {
       session_id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'ended'))
+      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'ended')),
+      language TEXT NOT NULL DEFAULT 'fr'
     );
 
     CREATE TABLE IF NOT EXISTS participants (
@@ -61,4 +62,11 @@ function initSchema(db: Database.Database): void {
       FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
     );
   `);
+
+  // Migration: add language column to existing DBs (no-op if column already exists)
+  try {
+    db.exec("ALTER TABLE sessions ADD COLUMN language TEXT NOT NULL DEFAULT 'fr'");
+  } catch {
+    // Column already exists — safe to ignore
+  }
 }

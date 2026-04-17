@@ -51,7 +51,7 @@ export class DeepgramService {
     instance = this;
   }
 
-  startSession(sessionId: string): void {
+  startSession(sessionId: string, language: string = 'fr'): void {
     if (this.connections.has(sessionId)) return;
     if (!this.deepgramClient) {
       console.warn('[Deepgram] Cannot start session without API key');
@@ -60,7 +60,7 @@ export class DeepgramService {
 
     const options: LiveSchema = {
       model: 'nova-2',
-      language: 'fr',
+      language,
       smart_format: true,
       diarize: true,
       punctuate: true,

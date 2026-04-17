@@ -39,7 +39,8 @@ function getApiKey(): string {
 export async function startRecallBot(
   sessionId: string,
   meetingUrl: string,
-  botName: string = 'BoardBot'
+  botName: string = 'BoardBot',
+  language: string = 'fr'
 ): Promise<{ ok: boolean; botId?: string; error?: string }> {
   if (activeBots.has(sessionId)) {
     return { ok: false, error: 'Bot already running for this session' };
@@ -64,7 +65,7 @@ export async function startRecallBot(
         recording_config: {
           transcript: {
             provider: {
-              deepgram_streaming: { language: 'fr' },
+              deepgram_streaming: { language },
             },
           },
           ...(process.env.PUBLIC_URL ? {
@@ -99,7 +100,7 @@ export async function startRecallBot(
     socketService?.emitBotLog(sessionId, `Bot Recall.ai créé (${botId}). En attente de rejoindre le call...`);
 
     // Poll for status updates
-    pollBotStatus(sessionId, botId);
+    pollBotStatus(sessionId, botId, language);
 
     return { ok: true, botId };
   } catch (err) {
@@ -109,7 +110,7 @@ export async function startRecallBot(
   }
 }
 
-async function pollBotStatus(sessionId: string, botId: string): Promise<void> {
+async function pollBotStatus(sessionId: string, botId: string, language: string = 'fr'): Promise<void> {
   const socketService = getSocketService();
   const apiKey = getApiKey();
   let recordingId: string | null = null;
@@ -165,7 +166,7 @@ async function pollBotStatus(sessionId: string, botId: string): Promise<void> {
                   'Authorization': `Token ${apiKey}`,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ language: 'fr' }),
+                body: JSON.stringify({ language }),
               });
               console.log(`[Recall] Create transcript response: ${txCreate.status}`);
               if (txCreate.ok) {

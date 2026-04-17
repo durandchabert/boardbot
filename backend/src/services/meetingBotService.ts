@@ -27,7 +27,8 @@ export function getBotStatus(sessionId: string): BotInstance | null {
 export async function startMeetingBot(
   sessionId: string,
   meetingUrl: string,
-  botName: string = 'BoardBot'
+  botName: string = 'BoardBot',
+  language: string = 'fr'
 ): Promise<{ ok: boolean; error?: string }> {
   if (activeBots.has(sessionId)) {
     return { ok: false, error: 'Bot already running for this session' };
@@ -86,7 +87,7 @@ export async function startMeetingBot(
     socketService?.emitBotLog(sessionId, `Bot connecté au meeting`);
 
     // Start capturing audio from the page via the Web Audio API
-    await startAudioCapture(bot);
+    await startAudioCapture(bot, language);
 
     return { ok: true };
   } catch (err) {
@@ -256,7 +257,7 @@ async function joinTeams(bot: BotInstance, botName: string): Promise<void> {
   socketService?.emitBotLog(sessionId, `Dans le meeting Teams`);
 }
 
-async function startAudioCapture(bot: BotInstance): Promise<void> {
+async function startAudioCapture(bot: BotInstance, language: string = 'fr'): Promise<void> {
   const { page, sessionId } = bot;
   const socketService = getSocketService();
 
@@ -327,7 +328,7 @@ async function startAudioCapture(bot: BotInstance): Promise<void> {
   // Poll audio chunks from the page and send to Deepgram
   const deepgram = getDeepgramService();
   if (deepgram) {
-    deepgram.startSession(sessionId);
+    deepgram.startSession(sessionId, language);
   }
 
   const pollInterval = setInterval(async () => {

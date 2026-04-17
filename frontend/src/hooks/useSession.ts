@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { MeetingSession } from '@boardbot/shared';
+import type { MeetingSession, SessionLanguage } from '@boardbot/shared';
 
 const API = '/api';
 
@@ -45,11 +45,14 @@ export function useSession(sessionId: string | undefined) {
   return { session, loading, error, refetch: fetchSession, addParticipant };
 }
 
-export async function createSession(title: string): Promise<MeetingSession> {
+export async function createSession(
+  title: string,
+  language: SessionLanguage = 'fr'
+): Promise<MeetingSession> {
   const res = await fetch(`${API}/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, language }),
   });
   if (!res.ok) throw new Error('Failed to create session');
   return res.json();

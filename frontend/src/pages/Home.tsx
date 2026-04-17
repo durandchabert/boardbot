@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createSession } from '../hooks/useSession.js';
+import { LANGUAGE_LABELS, type SessionLanguage } from '@boardbot/shared';
 import styles from './Home.module.css';
 
 export default function Home() {
   const [title, setTitle] = useState('');
+  const [language, setLanguage] = useState<SessionLanguage>('fr');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -12,7 +14,7 @@ export default function Home() {
     if (!title.trim()) return;
     setLoading(true);
     try {
-      const session = await createSession(title.trim());
+      const session = await createSession(title.trim(), language);
       navigate(`/session/${session.session_id}/setup`);
     } catch {
       alert('Erreur lors de la création de la session');
@@ -39,6 +41,18 @@ export default function Home() {
             className={styles.input}
             autoFocus
           />
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as SessionLanguage)}
+            className={styles.langSelect}
+            title="Langue de la réunion"
+          >
+            {(Object.keys(LANGUAGE_LABELS) as SessionLanguage[]).map((code) => (
+              <option key={code} value={code}>
+                {LANGUAGE_LABELS[code]}
+              </option>
+            ))}
+          </select>
           <button
             className="btn btn-primary"
             onClick={handleCreate}

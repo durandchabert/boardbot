@@ -40,6 +40,17 @@
   padding: 12px 16px;
 }
 
+.langSelect {
+  font-size: 1rem;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary, #111);
+  border: 1px solid var(--border, #ccc);
+  cursor: pointer;
+  min-width: 130px;
+}
+
 .features {
   display: flex;
   gap: 32px;
