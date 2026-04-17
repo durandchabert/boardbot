@@ -1,7 +1,7 @@
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
 import type { LiveSchema } from '@deepgram/sdk';
 import { v4 as uuid } from 'uuid';
-import { detectIdea } from './ideaDetector.js';
+import { detectIdea, markNoteCreated } from './ideaDetector.js';
 import { generateNoteText, detectInstruction, reviewNotes } from './noteGenerator.js';
 import { createNote, getNotesBySession, updateNote, deleteNote } from '../db/noteRepo.js';
 import { getParticipantBySpeaker } from '../db/sessionRepo.js';
@@ -85,7 +85,7 @@ export class DeepgramService {
       diarize: true,
       punctuate: true,
       interim_results: true,
-      utterance_end_ms: 1500,
+      utterance_end_ms: 800,
       encoding: 'linear16',
       sample_rate: 16000,
       channels: 1,
@@ -222,6 +222,9 @@ export class DeepgramService {
         position: getNextPosition(generated.category),
         source_utterance_id: utterance.utterance_id,
       });
+
+      // Anti-spam cooldown only starts AFTER a real note is created.
+      markNoteCreated(sessionId, speakerLabel);
 
       // Emit via Socket.IO
       if (socketService) {

@@ -1,6 +1,6 @@
 import { getDeepgramService } from './deepgramService.js';
 import { getSocketService } from './socketService.js';
-import { detectIdea } from './ideaDetector.js';
+import { detectIdea, markNoteCreated } from './ideaDetector.js';
 import { generateNoteText, detectInstruction } from './noteGenerator.js';
 import { createNote, getNotesBySession, updateNote, deleteNote } from '../db/noteRepo.js';
 import { getParticipantBySpeaker } from '../db/sessionRepo.js';
@@ -436,6 +436,8 @@ async function processTranscriptSegment(
     position: getNextPosition(generated.category),
     source_utterance_id: utterance.utterance_id,
   });
+
+  markNoteCreated(sessionId, speakerLabel);
 
   if (socketService) {
     socketService.emitNoteCreated(sessionId, note);
