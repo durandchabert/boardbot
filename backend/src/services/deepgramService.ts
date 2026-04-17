@@ -85,7 +85,7 @@ export class DeepgramService {
       diarize: true,
       punctuate: true,
       interim_results: true,
-      utterance_end_ms: 800,
+      utterance_end_ms: 1000,
       encoding: 'linear16',
       sample_rate: 16000,
       channels: 1,
