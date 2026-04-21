@@ -1,0 +1,203 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 600px;
+  padding: 40px;
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.input, .select {
+  width: 100%;
+  font-size: 1rem;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #ccc);
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #111);
+}
+
+.dropzone {
+  border: 2px dashed var(--border, #ccc);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--bg-primary, #fafafa);
+}
+
+.dropzone:hover, .dropzoneActive {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.dropzoneIcon {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.dropzoneMain {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dropzoneHint {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-primary, #f3f4f6);
+  border-radius: 10px;
+  border: 1px solid var(--border, #e5e5e5);
+  margin-top: 12px;
+}
+
+.fileName {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileSize {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.checkboxRow input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.checkboxRow span {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions button {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 1rem;
+}
+
+.progress {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: var(--bg-primary, #f3f4f6);
+  border-radius: 10px;
+  border: 1px solid var(--border, #e5e5e5);
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.progressPhase {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.progressPercent {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressStatus {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.progressBar {
+  height: 10px;
+  background: var(--border, #e5e5e5);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #818cf8);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.errorBox {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger, #b91c1c);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  font-size: 0.9rem;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

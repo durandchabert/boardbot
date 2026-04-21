@@ -19,7 +19,7 @@ export class SocketService {
         origin: '*',
         methods: ['GET', 'POST'],
       },
-      maxHttpBufferSize: 1e6, // 1MB max for audio chunks
+      maxHttpBufferSize: 1e6,
     });
 
     this.io.on('connection', (socket: Socket) => {
@@ -33,18 +33,16 @@ export class SocketService {
         console.log(`[Socket] ${socket.id} joined session ${data.session_id}`);
       });
 
-      // Audio streaming events
       socket.on('audio:start', async (data: { session_id: string }) => {
         audioSessionId = data.session_id;
         console.log(`[Audio] ${socket.id} started audio for session ${audioSessionId}`);
 
-        // Look up session language so Deepgram streams in the right language
         try {
           const { getSession } = await import('../db/sessionRepo.js');
           const sess = getSession(audioSessionId);
           if (sess?.language) audioSessionLang = sess.language;
         } catch {
-          // fallback to 'fr'
+          // fallback
         }
 
         const dg = getDeepgramService();
@@ -93,14 +91,12 @@ export class SocketService {
         }
       });
 
-      // User text instructions from the chat panel
       socket.on('bot:message', async (data: { message: string }) => {
         const sid = audioSessionId ?? [...socket.rooms].find(r => r !== socket.id) ?? null;
         if (!sid) return;
 
         console.log(`[Chat] User instruction: "${data.message}"`);
 
-        // Process the instruction against recent notes
         const { getNotesBySession } = await import('../db/noteRepo.js');
         const { detectInstruction } = await import('./noteGenerator.js');
         const recentNotes = getNotesBySession(sid).slice(-10);
@@ -185,5 +181,16 @@ export class SocketService {
 
   emitBotLog(sessionId: string, message: string): void {
     this.io.to(sessionId).emit('bot:log' as never, { message, timestamp: new Date().toISOString() });
+  }
+
+  emitUploadProgress(
+    sessionId: string,
+    data: {
+      phase: 'upload' | 'denoise' | 'transcribe' | 'pipeline' | 'done' | 'error';
+      percent: number;
+      message?: string;
+    }
+  ): void {
+    this.io.to(sessionId).emit('upload:progress' as never, data);
   }
 }

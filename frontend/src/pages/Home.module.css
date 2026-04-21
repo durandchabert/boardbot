@@ -31,7 +31,24 @@
 .form {
   display: flex;
   gap: 12px;
-  margin-bottom: 48px;
+  margin-bottom: 20px;
+}
+
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.orDivider::before,
+.orDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, #e5e5e5);
 }
 
 .input {

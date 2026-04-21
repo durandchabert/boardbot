@@ -5,6 +5,7 @@ import Home from './pages/Home.js';
 import Setup from './pages/Setup.js';
 import Board from './pages/Board.js';
 import Recap from './pages/Recap.js';
+import Import from './pages/Import.js';
 import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/import" element={<Import />} />
         <Route path="/session/:id/setup" element={<Setup />} />
         <Route path="/session/:id/board" element={<Board />} />
         <Route path="/session/:id/recap" element={<Recap />} />

@@ -62,6 +62,19 @@ export default function Home() {
           </button>
         </div>
 
+        <div className={styles.orDivider}>
+          <span>ou</span>
+        </div>
+
+        <button
+          className="btn btn-secondary"
+          onClick={() => navigate('/import')}
+          disabled={loading}
+          style={{ width: '100%', padding: '12px 16px', marginBottom: 40 }}
+        >
+          Importer un audio (diarisation + post-it auto)
+        </button>
+
         <div className={styles.features}>
           <div className={styles.feature}>
             <span className={styles.featureIcon}>🎙️</span>

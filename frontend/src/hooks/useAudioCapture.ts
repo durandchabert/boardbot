@@ -54,9 +54,20 @@ function setupAudioPipeline(
   const processor = audioContext.createScriptProcessor(4096, 1, 1);
   processorRef.current = processor;
 
+  let chunkCount = 0;
   processor.onaudioprocess = (event) => {
     if (!socketRef.current?.connected) return;
     const inputData = event.inputBuffer.getChannelData(0);
+
+    // Every ~1s, log the RMS level so we can verify the mic is actually picking up sound.
+    // Healthy speech ~ 0.05–0.3; near 0 = mic silent or muted.
+    if (++chunkCount % 10 === 0) {
+      let sum = 0;
+      for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
+      const rms = Math.sqrt(sum / inputData.length);
+      console.log(`[Audio] RMS=${rms.toFixed(4)} sampleRate=${actualSampleRate}`);
+    }
+
     const pcm16 = downsample(inputData, actualSampleRate, TARGET_SAMPLE_RATE);
     socketRef.current.emit('audio:chunk', pcm16.buffer);
   };
@@ -81,7 +92,9 @@ export function useAudioCapture(sessionId: string | undefined) {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+        // noiseSuppression + aggressive AGC can literally silence speech on laptop mics.
+        // Keep echo cancellation (useful for meetings), drop noise suppression.
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: true },
       });
       streamRef.current = stream;
       setupAudioPipeline(stream, sessionId, audioSocketRef, audioContextRef, processorRef);
