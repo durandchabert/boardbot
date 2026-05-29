@@ -61,6 +61,25 @@ function initSchema(db: Database.Database): void {
       source_utterance_id TEXT NOT NULL DEFAULT '',
       FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS bot_usage (
+      usage_id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      start_at TEXT NOT NULL DEFAULT (datetime('now')),
+      end_at TEXT,
+      duration_seconds INTEGER,
+      recall_cost_usd REAL,
+      deepgram_cost_usd REAL,
+      anthropic_cost_usd REAL,
+      total_cost_usd REAL,
+      notes_generated INTEGER DEFAULT 0,
+      video_enabled INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_bot_usage_start ON bot_usage(start_at);
+    CREATE INDEX IF NOT EXISTS idx_bot_usage_session ON bot_usage(session_id);
   `);
 
   // Migration: add language column to existing DBs (no-op if column already exists)

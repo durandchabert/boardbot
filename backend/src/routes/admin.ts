@@ -1,7 +1,23 @@
 import { Router } from 'express';
 import { getDb } from '../db/schema.js';
+import { getUsageSummary, getRecentUsage, getCurrentRates } from '../db/botUsageRepo.js';
 
 const router = Router();
+
+// GET /api/admin/usage — coût agrégé + détail récent
+router.get('/usage', (_req, res) => {
+  const now = new Date();
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+
+  res.json({
+    rates: getCurrentRates(),
+    today: getUsageSummary(startOfDay),
+    month: getUsageSummary(startOfMonth),
+    all_time: getUsageSummary(),
+    recent: getRecentUsage(50),
+  });
+});
 
 // GET /api/admin/stats — statistiques générales
 router.get('/stats', (_req, res) => {
@@ -107,6 +123,16 @@ router.get('/view', (_req, res) => {
     )
     .all() as Array<{ session_id: string; title: string; created_at: string; status: string; note_count: number }>;
 
+  // Cost stats
+  const nowDate = new Date();
+  const startOfMonth = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), 1)).toISOString();
+  const startOfDay = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate())).toISOString();
+  const usageToday = getUsageSummary(startOfDay);
+  const usageMonth = getUsageSummary(startOfMonth);
+  const usageAll = getUsageSummary();
+  const rates = getCurrentRates();
+  const recentUsage = getRecentUsage(20);
+
   const categoryColors: Record<string, string> = {
     idea: '#4ecdc4',
     problem: '#ff6b6b',
@@ -178,6 +204,45 @@ router.get('/view', (_req, res) => {
         </div>
       </div>
     `).join('')}
+
+  <h2>💰 Coûts API</h2>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">$${usageToday.total_cost_usd.toFixed(2)}</div>
+      <div class="stat-label">Aujourd'hui (${usageToday.total_calls} call${usageToday.total_calls !== 1 ? 's' : ''})</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">$${usageMonth.total_cost_usd.toFixed(2)}</div>
+      <div class="stat-label">Ce mois (${usageMonth.total_calls} call${usageMonth.total_calls !== 1 ? 's' : ''})</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">$${usageAll.total_cost_usd.toFixed(2)}</div>
+      <div class="stat-label">Total (${usageAll.total_calls} call${usageAll.total_calls !== 1 ? 's' : ''})</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${usageMonth.total_duration_hours.toFixed(1)}h</div>
+      <div class="stat-label">Heures bot ce mois</div>
+    </div>
+  </div>
+  <div class="session-meta" style="margin-bottom: 16px;">
+    Tarifs: Recall $${rates.recall_usd_per_hour}/h · Deepgram $${rates.deepgram_usd_per_min}/min · Anthropic $${rates.anthropic_usd_per_note}/note ·
+    Breakdown mois: Recall $${usageMonth.recall_cost_usd.toFixed(2)} · Deepgram $${usageMonth.deepgram_cost_usd.toFixed(2)} · Anthropic $${usageMonth.anthropic_cost_usd.toFixed(2)}
+  </div>
+
+  <h2>Sessions bot récentes (${recentUsage.length})</h2>
+  ${recentUsage.length === 0 ? '<div class="empty">Aucun bot lancé</div>' :
+    recentUsage.map(u => {
+      const dur = u.duration_seconds ? `${(u.duration_seconds / 60).toFixed(1)} min` : 'en cours';
+      const cost = u.total_cost_usd != null ? `$${u.total_cost_usd.toFixed(3)}` : '—';
+      return `
+      <div class="session">
+        <div>
+          <div class="session-title">${escapeHtml(u.bot_id.slice(0, 12))}... · ${dur}</div>
+          <div class="session-meta">${new Date(u.start_at + 'Z').toLocaleString('fr-FR')} · ${u.notes_generated} notes · vidéo ${u.video_enabled ? '✓' : '✗'}</div>
+        </div>
+        <span class="badge">${cost}</span>
+      </div>`;
+    }).join('')}
 
   <h2>Sessions récentes (${sessions.length})</h2>
   ${sessions.length === 0 ? '<div class="empty">Aucune session</div>' :

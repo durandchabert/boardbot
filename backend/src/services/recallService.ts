@@ -4,6 +4,7 @@ import { detectIdea, markNoteCreated } from './ideaDetector.js';
 import { generateNoteText, detectInstruction } from './noteGenerator.js';
 import { createNote, getNotesBySession, updateNote, deleteNote } from '../db/noteRepo.js';
 import { getParticipantBySpeaker } from '../db/sessionRepo.js';
+import { startBotUsage, endBotUsage } from '../db/botUsageRepo.js';
 import type { Utterance, NoteCategory } from '../../../shared/types.ts';
 import { v4 as uuid } from 'uuid';
 
@@ -15,6 +16,7 @@ interface RecallBot {
   sessionId: string;
   meetingUrl: string;
   status: string;
+  notesGenerated: number;
 }
 
 const activeBots = new Map<string, RecallBot>();
@@ -88,6 +90,16 @@ export async function startRecallBot(
       meeting_url: meetingUrl,
       bot_name: botName,
       recording_config: recordingConfig,
+      // Auto-leave conservateur — coupe vite pour limiter coût
+      automatic_leave: {
+        everyone_left_timeout: 30,            // 30s après que tout le monde est parti
+        in_call_not_recording_timeout: 300,   // 5 min si pas d'enregistrement
+        silence_detection: {
+          timeout: 600,                       // 10 min de silence total
+          activate_after: 60,                 // démarre détection après 1 min
+        },
+        waiting_room_timeout: 600,            // 10 min dans lobby max
+      },
     };
     if (joinAt) {
       requestBody.join_at = joinAt;
@@ -117,7 +129,15 @@ export async function startRecallBot(
       sessionId,
       meetingUrl,
       status: 'joining',
+      notesGenerated: 0,
     });
+
+    // Track usage start
+    try {
+      startBotUsage(sessionId, botId, recordVideo);
+    } catch (err) {
+      console.error('[Usage] Failed to record bot start:', err);
+    }
 
     socketService?.emitBotLog(sessionId, `Bot Recall.ai créé (${botId}). En attente de rejoindre le call...`);
 
@@ -214,6 +234,20 @@ async function pollBotStatus(sessionId: string, botId: string, language: string 
             } catch (err) {
               console.error('[Recall] Create transcript error:', err);
             }
+          }
+
+          // Track usage end + emit cost summary
+          try {
+            const usage = endBotUsage(botId, bot.notesGenerated);
+            if (usage && usage.duration_seconds != null && usage.total_cost_usd != null) {
+              const mins = (usage.duration_seconds / 60).toFixed(1);
+              socketService?.emitBotLog(
+                sessionId,
+                `💰 Coût session: $${usage.total_cost_usd.toFixed(3)} (${mins} min, ${bot.notesGenerated} notes)`
+              );
+            }
+          } catch (err) {
+            console.error('[Usage] Failed to record bot end:', err);
           }
 
           activeBots.delete(sessionId);
@@ -522,6 +556,10 @@ async function processTranscriptSegment(
 
   markNoteCreated(sessionId, speakerLabel);
 
+  // Increment note counter for cost tracking
+  const tracker = activeBots.get(sessionId);
+  if (tracker) tracker.notesGenerated += 1;
+
   if (socketService) {
     socketService.emitNoteCreated(sessionId, note);
     socketService.emitBotLog(sessionId, `Nouveau : "${note.text}" [${note.category}]`);
@@ -531,6 +569,21 @@ async function processTranscriptSegment(
 export async function stopRecallBot(sessionId: string): Promise<void> {
   const bot = activeBots.get(sessionId);
   if (!bot) return;
+
+  // Track usage end + emit cost
+  try {
+    const usage = endBotUsage(bot.botId, bot.notesGenerated);
+    const socketService = getSocketService();
+    if (usage && usage.duration_seconds != null && usage.total_cost_usd != null) {
+      const mins = (usage.duration_seconds / 60).toFixed(1);
+      socketService?.emitBotLog(
+        sessionId,
+        `💰 Coût session: $${usage.total_cost_usd.toFixed(3)} (${mins} min, ${bot.notesGenerated} notes)`
+      );
+    }
+  } catch (err) {
+    console.error('[Usage] Failed to record bot stop:', err);
+  }
 
   try {
     const apiKey = getApiKey();
