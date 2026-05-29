@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { getDeepgramService } from './deepgramService.js';
 import { getSocketService } from './socketService.js';
 import { detectIdea, markNoteCreated } from './ideaDetector.js';
@@ -8,6 +10,8 @@ import type { Utterance, NoteCategory } from '../../../shared/types.ts';
 import { v4 as uuid } from 'uuid';
 
 const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://us-east-1.recall.ai/api/v1';
+const DEFAULT_BOT_NAME = process.env.BOT_DISPLAY_NAME ?? 'Alexandre Durand-Chabert';
+const RECORDINGS_DIR = process.env.RECORDINGS_DIR ?? path.resolve(process.cwd(), 'recordings');
 
 interface RecallBot {
   botId: string;
@@ -36,21 +40,61 @@ function getApiKey(): string {
   return key;
 }
 
+export interface StartBotOptions {
+  joinAt?: string;
+  recordVideo?: boolean;
+  videoLayout?: 'speaker_view' | 'gallery_view';
+}
+
 export async function startRecallBot(
   sessionId: string,
   meetingUrl: string,
-  botName: string = 'BoardBot',
-  language: string = 'fr'
+  botName: string = DEFAULT_BOT_NAME,
+  language: string = 'fr',
+  options: StartBotOptions = {}
 ): Promise<{ ok: boolean; botId?: string; error?: string }> {
   if (activeBots.has(sessionId)) {
     return { ok: false, error: 'Bot already running for this session' };
   }
 
   const socketService = getSocketService();
+  const { joinAt, recordVideo = true, videoLayout = 'speaker_view' } = options;
 
   try {
     const apiKey = getApiKey();
-    socketService?.emitBotLog(sessionId, `Envoi du bot Recall.ai vers ${meetingUrl.slice(0, 50)}...`);
+    const whenLabel = joinAt ? ` (planifié pour ${joinAt})` : '';
+    socketService?.emitBotLog(sessionId, `Envoi du bot "${botName}"${whenLabel} vers ${meetingUrl.slice(0, 50)}...`);
+
+    const recordingConfig: Record<string, unknown> = {
+      transcript: {
+        provider: {
+          deepgram_streaming: { language },
+        },
+      },
+      ...(process.env.PUBLIC_URL ? {
+        realtime_endpoints: [
+          {
+            type: 'webhook' as const,
+            url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
+            events: ['transcript.data'],
+          },
+        ],
+      } : {}),
+    };
+
+    if (recordVideo) {
+      recordingConfig.video_mixed_layout = videoLayout;
+      recordingConfig.video_mixed_mp4 = {};
+    }
+
+    const requestBody: Record<string, unknown> = {
+      meeting_url: meetingUrl,
+      bot_name: botName,
+      recording_config: recordingConfig,
+    };
+    if (joinAt) {
+      requestBody.join_at = joinAt;
+    }
 
     // Create a bot via Recall.ai API
     const response = await fetch(`${RECALL_API_BASE}/bot`, {
@@ -59,26 +103,7 @@ export async function startRecallBot(
         'Authorization': `Token ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        meeting_url: meetingUrl,
-        bot_name: botName,
-        recording_config: {
-          transcript: {
-            provider: {
-              deepgram_streaming: { language },
-            },
-          },
-          ...(process.env.PUBLIC_URL ? {
-            realtime_endpoints: [
-              {
-                type: 'webhook' as const,
-                url: `${process.env.PUBLIC_URL}/api/recall/webhook/${sessionId}`,
-                events: ['transcript.data'],
-              },
-            ],
-          } : {}),
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -133,7 +158,14 @@ async function pollBotStatus(sessionId: string, botId: string, language: string 
 
       const data = await res.json() as {
         status_changes: Array<{ code: string; created_at: string }>;
-        recordings: Array<{ id: string; status: { code: string }; media_shortcuts: { transcript: { id: string; status: { code: string }; data: { download_url: string | null } } | null } }>;
+        recordings: Array<{
+          id: string;
+          status: { code: string };
+          media_shortcuts: {
+            transcript: { id: string; status: { code: string }; data: { download_url: string | null } } | null;
+            video_mixed?: { id: string; status: { code: string }; data: { download_url: string | null } } | null;
+          };
+        }>;
       };
 
       const latestStatus = data.status_changes?.[data.status_changes.length - 1]?.code;
@@ -154,6 +186,10 @@ async function pollBotStatus(sessionId: string, botId: string, language: string 
           socketService?.emitBotLog(sessionId, `Bot enregistre !`);
         } else if (latestStatus === 'call_ended' || latestStatus === 'done' || latestStatus === 'fatal') {
           socketService?.emitBotLog(sessionId, `Call terminé (${latestStatus})`);
+
+          if (recordingId) {
+            pollVideoDownload(sessionId, recordingId);
+          }
 
           // Request transcript creation when recording is done
           if (recordingId && !transcriptRequested) {
@@ -264,6 +300,73 @@ async function pollTranscript(sessionId: string, recordingId: string): Promise<v
   }, 5000);
 }
 
+async function pollVideoDownload(sessionId: string, recordingId: string): Promise<void> {
+  const socketService = getSocketService();
+  const apiKey = getApiKey();
+  let attempts = 0;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    if (attempts > 60) {
+      clearInterval(interval);
+      socketService?.emitBotLog(sessionId, `Timeout enregistrement vidéo`);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${RECALL_API_BASE}/recording/${recordingId}/`, {
+        headers: { 'Authorization': `Token ${apiKey}` },
+      });
+      if (!res.ok) return;
+
+      const recording = await res.json() as {
+        media_shortcuts: {
+          video_mixed?: {
+            status: { code: string };
+            data: { download_url: string | null };
+          } | null;
+        };
+      };
+
+      const video = recording.media_shortcuts?.video_mixed;
+      if (!video) {
+        clearInterval(interval);
+        return;
+      }
+
+      if (video.status.code === 'done' && video.data.download_url) {
+        clearInterval(interval);
+        socketService?.emitBotLog(sessionId, `Vidéo prête, téléchargement...`);
+
+        try {
+          if (!fs.existsSync(RECORDINGS_DIR)) {
+            fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+          }
+          const filename = `${sessionId}_${Date.now()}.mp4`;
+          const filepath = path.join(RECORDINGS_DIR, filename);
+
+          const dl = await fetch(video.data.download_url);
+          if (!dl.ok || !dl.body) {
+            socketService?.emitBotLog(sessionId, `Erreur download vidéo: HTTP ${dl.status}`);
+            return;
+          }
+          const buf = Buffer.from(await dl.arrayBuffer());
+          fs.writeFileSync(filepath, buf);
+          socketService?.emitBotLog(sessionId, `Vidéo sauvée: ${filepath} (${(buf.length / 1024 / 1024).toFixed(1)} MB)`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          socketService?.emitBotLog(sessionId, `Erreur sauvegarde vidéo: ${msg}`);
+        }
+      } else if (video.status.code === 'failed') {
+        clearInterval(interval);
+        socketService?.emitBotLog(sessionId, `Enregistrement vidéo échoué`);
+      }
+    } catch (err) {
+      console.error('[Recall] Poll video error:', err);
+    }
+  }, 5000);
+}
+
 /**
  * Handle real-time webhook from Recall.ai
  * Handles: transcript.data, participant.joined
@@ -281,7 +384,9 @@ export async function handleWebhook(
   if (event === 'participant.joined' && outerData) {
     const p = outerData as { id?: number; name?: string };
     const name = p.name?.trim();
-    if (name && name.toLowerCase() !== 'boardbot' && name.toLowerCase() !== 'board bot') {
+    const botNameLower = DEFAULT_BOT_NAME.toLowerCase();
+    const nameLower = name?.toLowerCase() ?? '';
+    if (name && nameLower !== 'boardbot' && nameLower !== 'board bot' && nameLower !== botNameLower) {
       const { getSession, getParticipantByName, addParticipant } = await import('../db/sessionRepo.js');
       if (getSession(sessionId) && !getParticipantByName(sessionId, name)) {
         const speakerLabel = `speaker_${p.id ?? 0}`;

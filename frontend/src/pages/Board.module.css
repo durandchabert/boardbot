@@ -66,6 +66,19 @@
   padding: 8px 10px;
 }
 
+.botCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.botCheckbox input {
+  margin: 0;
+}
+
 .divider {
   height: 1px;
   background: var(--border);

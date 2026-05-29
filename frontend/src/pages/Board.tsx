@@ -24,6 +24,9 @@ export default function Board() {
   const { session, loading } = useSession(id);
   const [testIndex, setTestIndex] = useState(0);
   const [meetingUrl, setMeetingUrl] = useState('');
+  const [botName, setBotName] = useState('Alexandre Durand-Chabert');
+  const [joinAt, setJoinAt] = useState('');
+  const [recordVideo, setRecordVideo] = useState(true);
   const [botActive, setBotActive] = useState(false);
   const {
     notes,
@@ -94,6 +97,28 @@ export default function Board() {
               onChange={(e) => setMeetingUrl(e.target.value)}
               className={styles.botInput}
             />
+            <input
+              type="text"
+              placeholder="Nom affiché du bot"
+              value={botName}
+              onChange={(e) => setBotName(e.target.value)}
+              className={styles.botInput}
+            />
+            <input
+              type="datetime-local"
+              value={joinAt}
+              onChange={(e) => setJoinAt(e.target.value)}
+              className={styles.botInput}
+              title="Heure de rejoindre (optionnel)"
+            />
+            <label className={styles.botCheckbox}>
+              <input
+                type="checkbox"
+                checked={recordVideo}
+                onChange={(e) => setRecordVideo(e.target.checked)}
+              />
+              Enregistrer la vidéo
+            </label>
             <button
               className={`btn ${botActive ? 'btn-danger' : 'btn-primary'} btn-sm`}
               onClick={async () => {
@@ -101,10 +126,18 @@ export default function Board() {
                   await fetch(`/api/sessions/${id}/bot/stop`, { method: 'POST' });
                   setBotActive(false);
                 } else if (meetingUrl.trim()) {
+                  const payload: Record<string, unknown> = {
+                    meeting_url: meetingUrl.trim(),
+                    bot_name: botName.trim() || undefined,
+                    record_video: recordVideo,
+                  };
+                  if (joinAt) {
+                    payload.join_at = new Date(joinAt).toISOString();
+                  }
                   const res = await fetch(`/api/sessions/${id}/bot/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ meeting_url: meetingUrl.trim() }),
+                    body: JSON.stringify(payload),
                   });
                   const data = await res.json();
                   if (data.ok) {
@@ -117,7 +150,7 @@ export default function Board() {
               style={{ width: '100%', justifyContent: 'center' }}
               disabled={!meetingUrl.trim() && !botActive}
             >
-              {botActive ? '⏹ Retirer le bot' : '🤖 Envoyer le bot'}
+              {botActive ? '⏹ Retirer le bot' : joinAt ? '📅 Planifier le bot' : '🤖 Envoyer le bot'}
             </button>
           </div>
 

@@ -11,7 +11,7 @@ router.post('/:id/bot/start', async (req, res) => {
     return;
   }
 
-  const { meeting_url, bot_name } = req.body;
+  const { meeting_url, bot_name, join_at, record_video, video_layout } = req.body;
   if (!meeting_url) {
     res.status(400).json({ error: 'meeting_url is required' });
     return;
@@ -19,7 +19,17 @@ router.post('/:id/bot/start', async (req, res) => {
 
   try {
     const { startRecallBot } = await import('../services/recallService.js');
-    const result = await startRecallBot(req.params.id, meeting_url, bot_name ?? 'BoardBot', session.language);
+    const result = await startRecallBot(
+      req.params.id,
+      meeting_url,
+      bot_name || undefined,
+      session.language,
+      {
+        joinAt: join_at || undefined,
+        recordVideo: record_video !== false,
+        videoLayout: video_layout || undefined,
+      }
+    );
     if (result.ok) {
       res.json({ ok: true, botId: result.botId });
     } else {
