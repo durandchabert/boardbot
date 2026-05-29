@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { getDeepgramService } from './deepgramService.js';
 import { getSocketService } from './socketService.js';
 import { detectIdea, markNoteCreated } from './ideaDetector.js';
@@ -11,7 +9,6 @@ import { v4 as uuid } from 'uuid';
 
 const RECALL_API_BASE = process.env.RECALL_API_BASE ?? 'https://us-east-1.recall.ai/api/v1';
 const DEFAULT_BOT_NAME = process.env.BOT_DISPLAY_NAME ?? 'Alexandre Durand-Chabert';
-const RECORDINGS_DIR = process.env.RECORDINGS_DIR ?? path.resolve(process.cwd(), 'recordings');
 
 interface RecallBot {
   botId: string;
@@ -336,27 +333,8 @@ async function pollVideoDownload(sessionId: string, recordingId: string): Promis
 
       if (video.status.code === 'done' && video.data.download_url) {
         clearInterval(interval);
-        socketService?.emitBotLog(sessionId, `Vidéo prête, téléchargement...`);
-
-        try {
-          if (!fs.existsSync(RECORDINGS_DIR)) {
-            fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
-          }
-          const filename = `${sessionId}_${Date.now()}.mp4`;
-          const filepath = path.join(RECORDINGS_DIR, filename);
-
-          const dl = await fetch(video.data.download_url);
-          if (!dl.ok || !dl.body) {
-            socketService?.emitBotLog(sessionId, `Erreur download vidéo: HTTP ${dl.status}`);
-            return;
-          }
-          const buf = Buffer.from(await dl.arrayBuffer());
-          fs.writeFileSync(filepath, buf);
-          socketService?.emitBotLog(sessionId, `Vidéo sauvée: ${filepath} (${(buf.length / 1024 / 1024).toFixed(1)} MB)`);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          socketService?.emitBotLog(sessionId, `Erreur sauvegarde vidéo: ${msg}`);
-        }
+        socketService?.emitBotLog(sessionId, `🎥 Vidéo prête — lien valide ~7 jours:`);
+        socketService?.emitBotLog(sessionId, video.data.download_url);
       } else if (video.status.code === 'failed') {
         clearInterval(interval);
         socketService?.emitBotLog(sessionId, `Enregistrement vidéo échoué`);

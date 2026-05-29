@@ -125,3 +125,12 @@
 .sendBtn:hover {
   background: var(--accent-hover);
 }
+
+.logLink {
+  color: var(--primary, #4dabf7);
+  text-decoration: underline;
+  word-break: break-all;
+}
+.logLink:hover {
+  opacity: 0.8;
+}

@@ -29,6 +29,20 @@ export default function BotLogPanel({ logs, onSendMessage }: Props) {
     setInput('');
   };
 
+  const renderMessage = (msg: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = msg.split(urlRegex);
+    return parts.map((part, idx) =>
+      urlRegex.test(part) ? (
+        <a key={idx} href={part} target="_blank" rel="noopener noreferrer" className={styles.logLink}>
+          {part.length > 60 ? part.slice(0, 57) + '...' : part}
+        </a>
+      ) : (
+        <span key={idx}>{part}</span>
+      )
+    );
+  };
+
   return (
     <div className={`${styles.panel} ${isOpen ? styles.open : styles.closed}`}>
       <button className={styles.toggle} onClick={() => setIsOpen(!isOpen)}>
@@ -56,7 +70,7 @@ export default function BotLogPanel({ logs, onSendMessage }: Props) {
                 <span className={styles.logLabel}>
                   {log.type === 'user' ? 'Vous' : 'Bot'}
                 </span>
-                <span className={styles.logMessage}>{log.message}</span>
+                <span className={styles.logMessage}>{renderMessage(log.message)}</span>
               </div>
             ))}
           </div>
