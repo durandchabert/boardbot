@@ -1,6 +1,6 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import type { StickyNote, Participant } from '../../../shared/types.ts';
+import type { StickyNote, Participant, AdvisorSuggestion } from '../../../shared/types.ts';
 import { updateNote } from '../db/noteRepo.js';
 import { getDeepgramService } from './deepgramService.js';
 
@@ -181,6 +181,10 @@ export class SocketService {
 
   emitBotLog(sessionId: string, message: string): void {
     this.io.to(sessionId).emit('bot:log' as never, { message, timestamp: new Date().toISOString() });
+  }
+
+  emitAdvisorSuggestion(sessionId: string, suggestion: AdvisorSuggestion): void {
+    this.io.to(sessionId).emit('advisor:suggestion', { suggestion });
   }
 
   emitUploadProgress(

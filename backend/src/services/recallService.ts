@@ -5,6 +5,7 @@ import { generateNoteText, detectInstruction } from './noteGenerator.js';
 import { createNote, getNotesBySession, updateNote, deleteNote } from '../db/noteRepo.js';
 import { getParticipantBySpeaker } from '../db/sessionRepo.js';
 import { startBotUsage, endBotUsage } from '../db/botUsageRepo.js';
+import { pushUtterance, resetAdvisor } from './advisorService.js';
 import type { Utterance, NoteCategory } from '../../../shared/types.ts';
 import { v4 as uuid } from 'uuid';
 
@@ -138,6 +139,9 @@ export async function startRecallBot(
     } catch (err) {
       console.error('[Usage] Failed to record bot start:', err);
     }
+
+    // Reset advisor buffer for fresh session
+    resetAdvisor(sessionId);
 
     socketService?.emitBotLog(sessionId, `Bot Recall.ai créé (${botId}). En attente de rejoindre le call...`);
 
@@ -485,6 +489,11 @@ async function processTranscriptSegment(
   } catch (err) {
     console.error('[Utterance] Save error:', err);
   }
+
+  // Feed advisor buffer (fire-and-forget)
+  pushUtterance(sessionId, speakerName || speakerLabel, transcript).catch((err) =>
+    console.error('[Advisor] pushUtterance error:', err)
+  );
 
   const detection = detectIdea(utterance, sessionId);
   if (!detection.shouldCreate) return;

@@ -149,6 +149,14 @@ export class DeepgramService {
         console.error('[Utterance] Save error:', err);
       }
 
+      // Feed advisor buffer (fire-and-forget)
+      try {
+        const { pushUtterance } = await import('./advisorService.js');
+        pushUtterance(sessionId, speakerLabel, transcript).catch((err) =>
+          console.error('[Advisor] pushUtterance error:', err)
+        );
+      } catch { /* ignore */ }
+
       // Accumulate transcript for periodic review
       const prevBuf = transcriptBuffers.get(sessionId) ?? '';
       transcriptBuffers.set(sessionId, prevBuf + `\n${speakerLabel}: ${transcript}`);

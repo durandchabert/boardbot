@@ -95,6 +95,40 @@
   justify-content: center;
   padding: 14px;
   font-size: 1.05rem;
+  margin-top: 16px;
+}
+
+.contextSection {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 8px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.contextTextarea {
+  width: 100%;
+  min-height: 150px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.keywordRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .loading {

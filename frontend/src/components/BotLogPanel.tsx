@@ -4,15 +4,16 @@ import styles from './BotLogPanel.module.css';
 interface LogEntry {
   message: string;
   timestamp: string;
-  type: 'bot' | 'user';
+  type: 'bot' | 'user' | 'advisor';
 }
 
 interface Props {
   logs: LogEntry[];
   onSendMessage: (message: string) => void;
+  onAskAdvisor?: () => void;
 }
 
-export default function BotLogPanel({ logs, onSendMessage }: Props) {
+export default function BotLogPanel({ logs, onSendMessage, onAskAdvisor }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -59,23 +60,37 @@ export default function BotLogPanel({ logs, onSendMessage }: Props) {
             {logs.length === 0 && (
               <div className={styles.empty}>En attente d'activité...</div>
             )}
-            {logs.map((log, i) => (
-              <div
-                key={i}
-                className={`${styles.logEntry} ${log.type === 'user' ? styles.userEntry : styles.botEntry}`}
-              >
-                <span className={styles.logTime}>
-                  {new Date(log.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </span>
-                <span className={styles.logLabel}>
-                  {log.type === 'user' ? 'Vous' : 'Bot'}
-                </span>
-                <span className={styles.logMessage}>{renderMessage(log.message)}</span>
-              </div>
-            ))}
+            {logs.map((log, i) => {
+              const entryClass =
+                log.type === 'user'
+                  ? styles.userEntry
+                  : log.type === 'advisor'
+                    ? styles.advisorEntry
+                    : styles.botEntry;
+              const label =
+                log.type === 'user' ? 'Vous' : log.type === 'advisor' ? '🧙 Advisor' : 'Bot';
+              return (
+                <div key={i} className={`${styles.logEntry} ${entryClass}`}>
+                  <span className={styles.logTime}>
+                    {new Date(log.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span className={styles.logLabel}>{label}</span>
+                  <span className={styles.logMessage}>{renderMessage(log.message)}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className={styles.inputArea}>
+            {onAskAdvisor && (
+              <button
+                className={styles.advisorBtn}
+                onClick={onAskAdvisor}
+                title="Demander une suggestion à l'Advisor"
+              >
+                🧙
+              </button>
+            )}
             <input
               type="text"
               value={input}

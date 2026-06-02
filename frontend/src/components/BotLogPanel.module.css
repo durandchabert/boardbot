@@ -134,3 +134,25 @@
 .logLink:hover {
   opacity: 0.8;
 }
+
+.advisorEntry {
+  color: #c39bff;
+  background: rgba(140, 100, 220, 0.08);
+  border-left: 3px solid #9b6bff;
+  padding-left: 8px;
+  border-radius: 4px;
+}
+
+.advisorBtn {
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #9b6bff 0%, #6b4dff 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.advisorBtn:hover {
+  opacity: 0.9;
+}

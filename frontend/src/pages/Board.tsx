@@ -39,6 +39,7 @@ export default function Board() {
     botLogs,
     liveParticipants,
     sendBotMessage,
+    askAdvisor,
   } = useSocket(id);
 
   // Fusion : participants initiaux (depuis la DB) + nouveaux arrivants détectés en live
@@ -226,7 +227,7 @@ export default function Board() {
       </main>
 
       {/* Bot Log Panel */}
-      <BotLogPanel logs={botLogs} onSendMessage={sendBotMessage} />
+      <BotLogPanel logs={botLogs} onSendMessage={sendBotMessage} onAskAdvisor={askAdvisor} />
     </div>
   );
 }

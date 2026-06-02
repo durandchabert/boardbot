@@ -3,16 +3,30 @@ import { getDb } from './schema.js';
 import type { MeetingSession, Participant, SessionLanguage } from '../../../shared/types.ts';
 import { PARTICIPANT_COLORS } from '../../../shared/types.ts';
 
-export function createSession(title: string, language: SessionLanguage = 'fr'): MeetingSession {
+export function createSession(
+  title: string,
+  language: SessionLanguage = 'fr',
+  projectContext: string = '',
+  advisorKeyword: string = 'Hey BoardBot'
+): MeetingSession {
   const db = getDb();
   const session_id = uuid();
   const created_at = new Date().toISOString();
 
   db.prepare(
-    'INSERT INTO sessions (session_id, title, created_at, status, language) VALUES (?, ?, ?, ?, ?)'
-  ).run(session_id, title, created_at, 'active', language);
+    'INSERT INTO sessions (session_id, title, created_at, status, language, project_context, advisor_keyword) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(session_id, title, created_at, 'active', language, projectContext, advisorKeyword);
 
-  return { session_id, title, created_at, status: 'active', language, participants: [] };
+  return {
+    session_id,
+    title,
+    created_at,
+    status: 'active',
+    language,
+    project_context: projectContext,
+    advisor_keyword: advisorKeyword,
+    participants: [],
+  };
 }
 
 export function getSession(sessionId: string): MeetingSession | null {
@@ -23,6 +37,8 @@ export function getSession(sessionId: string): MeetingSession | null {
     created_at: string;
     status: 'active' | 'ended';
     language?: SessionLanguage;
+    project_context?: string;
+    advisor_keyword?: string;
   } | undefined;
 
   if (!row) return null;
@@ -31,7 +47,23 @@ export function getSession(sessionId: string): MeetingSession | null {
     .prepare('SELECT * FROM participants WHERE session_id = ?')
     .all(sessionId) as Participant[];
 
-  return { ...row, language: row.language ?? 'fr', participants };
+  return {
+    ...row,
+    language: row.language ?? 'fr',
+    project_context: row.project_context ?? '',
+    advisor_keyword: row.advisor_keyword ?? 'Hey BoardBot',
+    participants,
+  };
+}
+
+export function updateProjectContext(sessionId: string, projectContext: string): void {
+  const db = getDb();
+  db.prepare('UPDATE sessions SET project_context = ? WHERE session_id = ?').run(projectContext, sessionId);
+}
+
+export function updateAdvisorKeyword(sessionId: string, keyword: string): void {
+  const db = getDb();
+  db.prepare('UPDATE sessions SET advisor_keyword = ? WHERE session_id = ?').run(keyword, sessionId);
 }
 
 export function endSession(sessionId: string): void {

@@ -18,6 +18,8 @@ export interface MeetingSession {
   created_at: string;
   status: 'active' | 'ended';
   language: SessionLanguage;
+  project_context: string;       // Contexte projet libre (Markdown OK)
+  advisor_keyword: string;       // Mot-code vocal pour invoquer l'advisor
   participants: Participant[];
 }
 
@@ -59,6 +61,13 @@ export interface StickyNote {
 }
 
 // ── Socket.IO Events ──
+export interface AdvisorSuggestion {
+  kind: 'question' | 'insight' | 'warning' | 'connection';
+  text: string;
+  reasoning?: string;
+  timestamp: string;
+}
+
 export interface ServerToClientEvents {
   'note:created': (data: { note: StickyNote }) => void;
   'note:updated': (data: { note: StickyNote }) => void;
@@ -66,6 +75,7 @@ export interface ServerToClientEvents {
   'transcript:live': (data: { speaker_label: string; text: string; is_final: boolean }) => void;
   'session:ended': () => void;
   'participant:added': (data: { participant: Participant }) => void;
+  'advisor:suggestion': (data: { suggestion: AdvisorSuggestion }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -79,6 +89,8 @@ export interface ClientToServerEvents {
 export interface CreateSessionRequest {
   title: string;
   language?: SessionLanguage;
+  project_context?: string;
+  advisor_keyword?: string;
 }
 
 export interface AddParticipantRequest {

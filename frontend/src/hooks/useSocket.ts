@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { StickyNote, Participant } from '@boardbot/shared';
+import type { StickyNote, Participant, AdvisorSuggestion } from '@boardbot/shared';
 import type { LogEntry } from '../components/BotLogPanel.js';
 
 interface TranscriptMessage {
@@ -67,6 +67,25 @@ export function useSocket(sessionId: string | undefined) {
       setBotLogs((prev) => [...prev, { ...data, type: 'bot' }]);
     });
 
+    // Advisor suggestions
+    socket.on('advisor:suggestion', ({ suggestion }: { suggestion: AdvisorSuggestion }) => {
+      const prefix = {
+        question: '❓',
+        insight: '💡',
+        warning: '⚠️',
+        connection: '🔗',
+      }[suggestion.kind] ?? '💡';
+      const reasoning = suggestion.reasoning ? `  · ${suggestion.reasoning}` : '';
+      setBotLogs((prev) => [
+        ...prev,
+        {
+          message: `${prefix} ${suggestion.text}${reasoning}`,
+          timestamp: suggestion.timestamp,
+          type: 'advisor',
+        },
+      ]);
+    });
+
     // Load existing notes
     fetch(`/api/sessions/${sessionId}/notes`)
       .then((res) => res.json())
@@ -104,6 +123,22 @@ export function useSocket(sessionId: string | undefined) {
     socketRef.current?.emit('bot:message' as never, { message });
   }, []);
 
+  const askAdvisor = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/advisor`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.ok) {
+        setBotLogs((prev) => [
+          ...prev,
+          { message: `Advisor: ${data.error}`, timestamp: new Date().toISOString(), type: 'bot' },
+        ]);
+      }
+    } catch (err) {
+      console.error('askAdvisor error', err);
+    }
+  }, [sessionId]);
+
   return {
     notes,
     liveTranscript,
@@ -115,5 +150,6 @@ export function useSocket(sessionId: string | undefined) {
     rejectNote,
     editNote,
     sendBotMessage,
+    askAdvisor,
   };
 }

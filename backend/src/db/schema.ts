@@ -88,4 +88,12 @@ function initSchema(db: Database.Database): void {
   } catch {
     // Column already exists — safe to ignore
   }
+
+  // Migration: add project_context + advisor_keyword for Advisor feature
+  try {
+    db.exec("ALTER TABLE sessions ADD COLUMN project_context TEXT NOT NULL DEFAULT ''");
+  } catch { /* exists */ }
+  try {
+    db.exec("ALTER TABLE sessions ADD COLUMN advisor_keyword TEXT NOT NULL DEFAULT 'Hey BoardBot'");
+  } catch { /* exists */ }
 }
